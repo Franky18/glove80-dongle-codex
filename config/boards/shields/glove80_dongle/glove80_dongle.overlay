@@ -4,6 +4,7 @@
 
 #include <dt-bindings/led/led.h>
 #include <dt-bindings/zmk/matrix_transform.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
 #include "glove80_dongle_flash.dtsi"
 
 / {
@@ -18,6 +19,16 @@
         columns = <0>;
         rows = <0>;
         events = <>;
+    };
+
+    /*
+     * MoErgo's RGB status implementation expects an ext-power device even
+     * when the dummy strip is off. Route it to another unused pad.
+     */
+    dongle_dummy_ext_power: ext_power_0 {
+        compatible = "zmk,ext-power-generic";
+        control-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+        init-delay-ms = <0>;
     };
 
     /* Exact 80-position transform from MoErgo's production Glove80 board. */
@@ -39,7 +50,8 @@
 /*
  * The keymap's RGB behavior is global, so the central needs a local RGB state
  * owner before it can relay absolute commands to both peripherals. This
- * one-pixel strip is intentionally routed to unused P0.13; no LED is attached.
+ * one-pixel strip is intentionally routed to unused P0.13, with its dummy
+ * power control on unused P0.14; no LED or power switch is attached.
  */
 &pinctrl {
     dongle_rgb_spi_default: dongle_rgb_spi_default {
@@ -73,4 +85,3 @@
         color-mapping = <LED_COLOR_ID_GREEN LED_COLOR_ID_RED LED_COLOR_ID_BLUE>;
     };
 };
-
