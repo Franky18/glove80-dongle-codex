@@ -1,0 +1,9 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: MIT
+
+config SHIELD_GLOVE80_DONGLE
+    def_bool $(shields_list_contains,glove80_dongle)
+
+config SHIELD_GLOVE80_DONGLE_RESET
+    def_bool $(shields_list_contains,glove80_dongle_reset)
+

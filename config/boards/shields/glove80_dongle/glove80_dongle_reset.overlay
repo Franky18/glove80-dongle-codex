@@ -1,0 +1,17 @@
+/* Settings-reset image for the Makerdiary dongle. */
+
+#include "glove80_dongle_flash.dtsi"
+
+/ {
+    chosen {
+        zmk,kscan = &dongle_reset_kscan;
+    };
+
+    dongle_reset_kscan: dongle_reset_kscan_0 {
+        compatible = "zmk,kscan-mock";
+        columns = <1>;
+        rows = <0>;
+        events = <>;
+    };
+};
+

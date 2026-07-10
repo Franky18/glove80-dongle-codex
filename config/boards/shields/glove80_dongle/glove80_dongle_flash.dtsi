@@ -1,0 +1,48 @@
+/*
+ * Flash layout for the Makerdiary nRF52840 MDK USB Dongle running UF2
+ * Bootloader 0.7.1 without a SoftDevice.
+ *
+ * 0x00000000..0x00000fff  MBR (read-only)
+ * 0x00001000..0x000d3fff  ZMK application
+ * 0x000d4000..0x000f3fff  ZMK settings/NVS
+ * 0x000f4000..0x000fffff  UF2 bootloader (read-only)
+ */
+
+/ {
+    chosen {
+        zephyr,code-partition = &code_partition;
+    };
+};
+
+&flash0 {
+    /delete-node/ partitions;
+
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        mbr_partition: partition@0 {
+            label = "MBR";
+            read-only;
+            reg = <0x00000000 0x00001000>;
+        };
+
+        code_partition: partition@1000 {
+            label = "Application";
+            reg = <0x00001000 0x000d3000>;
+        };
+
+        storage_partition: partition@d4000 {
+            label = "Storage";
+            reg = <0x000d4000 0x00020000>;
+        };
+
+        boot_partition: partition@f4000 {
+            label = "UF2";
+            read-only;
+            reg = <0x000f4000 0x0000c000>;
+        };
+    };
+};
+
