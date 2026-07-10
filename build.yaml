@@ -12,6 +12,7 @@ include:
       -DCONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING=n
       -DCONFIG_ZMK_USB=n
       -DCONFIG_ZMK_USB_BOOT=n
+      -DCONFIG_ZMK_RGB_UNDERGLOW=n
       -DCONFIG_ZMK_HID_INDICATORS=y
       -DCONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS=y
 
@@ -36,4 +37,3 @@ include:
   - board: glove80_rh
     shield: settings_reset
     artifact-name: settings_reset-glove80_rh
-
