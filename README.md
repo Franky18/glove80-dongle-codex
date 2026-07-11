@@ -83,13 +83,15 @@ written.
   stock-style two battery rows on the left half for ten seconds. Row 3 is the
   left battery (peripheral 0); row 4 is the right battery (peripheral 1). The
   normal RGB effect resumes automatically.
-- This first Magic-status version shows battery rows only. Layer, lock, BLE, and
-  USB status pixels are intentionally omitted. Both halves must be connected
-  when Magic is tapped; a level that the dongle cannot read is shown as six red
-  LEDs.
+- The same Magic display mirrors MoErgo's first six layer indicators, Caps Lock,
+  Num Lock, Scroll Lock, the first four host BLE profiles, USB state, and the
+  output-fallback warning. Those central-owned states are packed by the dongle
+  and rendered on the left peripheral with the stock pixel mappings and colors.
+- Both halves must be connected when Magic is tapped; a battery level that the
+  dongle cannot read is shown as six red LEDs.
 
-The battery-status integration is kept as a small patch in
-`patches/moergo-magic-battery-status.patch`. The root Zephyr module applies it
+The status integration is kept as a small patch in
+`patches/moergo-magic-status.patch`. The root Zephyr module applies it
 only to the exact MoErgo ZMK revision pinned in `config/west.yml`; a revision or
 patch mismatch fails the build.
 

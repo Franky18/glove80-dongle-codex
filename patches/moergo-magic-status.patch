@@ -1,0 +1,295 @@
+diff --git a/app/include/zmk/rgb_underglow.h b/app/include/zmk/rgb_underglow.h
+index 0c45e1c..4601ee9 100644
+--- a/app/include/zmk/rgb_underglow.h
++++ b/app/include/zmk/rgb_underglow.h
+@@ -6,6 +6,8 @@
+ 
+ #pragma once
+ 
++#include <stdint.h>
++
+ struct zmk_led_hsb {
+     uint16_t h;
+     uint8_t s;
+@@ -27,4 +29,30 @@ int zmk_rgb_underglow_change_sat(int direction);
+ int zmk_rgb_underglow_change_brt(int direction);
+ int zmk_rgb_underglow_change_spd(int direction);
+ int zmk_rgb_underglow_set_hsb(struct zmk_led_hsb color);
+-int zmk_rgb_underglow_status(void);
++#define ZMK_RGB_STATUS_PAYLOAD_MARKER (1U << 31)
++
++#define ZMK_RGB_STATUS_BATTERY_LHS_SHIFT 0
++#define ZMK_RGB_STATUS_BATTERY_RHS_SHIFT 3
++#define ZMK_RGB_STATUS_BATTERY_BARS_MASK 0x07U
++
++#define ZMK_RGB_STATUS_LAYER_SHIFT 6
++#define ZMK_RGB_STATUS_LAYER_MASK 0x3FU
++#define ZMK_RGB_STATUS_LAYER_COUNT 6
++
++#define ZMK_RGB_STATUS_LOCK_SHIFT 12
++#define ZMK_RGB_STATUS_LOCK_MASK 0x07U
++
++#define ZMK_RGB_STATUS_BLE_SHIFT 15
++#define ZMK_RGB_STATUS_BLE_STATE_MASK 0x03U
++#define ZMK_RGB_STATUS_BLE_PROFILE_COUNT 4
++
++#define ZMK_RGB_STATUS_USB_SHIFT 23
++#define ZMK_RGB_STATUS_USB_STATE_MASK 0x03U
++#define ZMK_RGB_STATUS_OUTPUT_FALLBACK (1U << 25)
++
++#define ZMK_RGB_STATUS_ENDPOINT_UNUSED 0
++#define ZMK_RGB_STATUS_ENDPOINT_PAIRED 1
++#define ZMK_RGB_STATUS_ENDPOINT_CONNECTED 2
++#define ZMK_RGB_STATUS_ENDPOINT_ACTIVE 3
++
++int zmk_rgb_underglow_status(uint32_t status_payload);
+diff --git a/app/src/behaviors/behavior_rgb_underglow.c b/app/src/behaviors/behavior_rgb_underglow.c
+index 2576486..e774694 100644
+--- a/app/src/behaviors/behavior_rgb_underglow.c
++++ b/app/src/behaviors/behavior_rgb_underglow.c
+@@ -14,6 +14,17 @@
+ #include <zmk/rgb_underglow.h>
+ #include <zmk/keymap.h>
+ 
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
++#include <zmk/ble.h>
++#include <zmk/endpoints.h>
++#include <zmk/hid_indicators.h>
++#include <zmk/usb.h>
++#endif
++
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
++#include <zmk/split/central.h>
++#endif
++
+ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+ 
+ #if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
+@@ -131,6 +142,85 @@ static const struct behavior_parameter_metadata metadata = {
+ 
+ #endif // IS_ENABLED(CONFIG_ZMK_BEHAVIOR_METADATA)
+ 
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
++
++static uint8_t battery_level_to_bars(uint8_t level) { return MIN(6, (level / 20) + 1); }
++
++static uint32_t zmk_rgb_status_payload(void) {
++    uint32_t payload = ZMK_RGB_STATUS_PAYLOAD_MARKER;
++
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
++    uint8_t level;
++
++    if (zmk_split_central_get_peripheral_battery_level(0, &level) == 0) {
++        payload |= (uint32_t)battery_level_to_bars(level)
++                   << ZMK_RGB_STATUS_BATTERY_LHS_SHIFT;
++    }
++
++    if (zmk_split_central_get_peripheral_battery_level(1, &level) == 0) {
++        payload |= (uint32_t)battery_level_to_bars(level)
++                   << ZMK_RGB_STATUS_BATTERY_RHS_SHIFT;
++    }
++#endif
++
++    for (uint8_t i = 0; i < ZMK_RGB_STATUS_LAYER_COUNT; i++) {
++        if (zmk_keymap_layer_active(i)) {
++            payload |= 1U << (ZMK_RGB_STATUS_LAYER_SHIFT + i);
++        }
++    }
++
++#if IS_ENABLED(CONFIG_ZMK_HID_INDICATORS)
++    payload |= (zmk_hid_indicators_get_current_profile() & ZMK_RGB_STATUS_LOCK_MASK)
++               << ZMK_RGB_STATUS_LOCK_SHIFT;
++#endif
++
++    struct zmk_endpoint_instance active_endpoint = zmk_endpoints_selected();
++
++    if (!zmk_endpoints_preferred_transport_is_active()) {
++        payload |= ZMK_RGB_STATUS_OUTPUT_FALLBACK;
++    }
++
++#if IS_ENABLED(CONFIG_ZMK_BLE)
++    int active_ble_profile_index = zmk_ble_active_profile_index();
++
++    for (uint8_t i = 0; i < MIN(ZMK_BLE_PROFILE_COUNT, ZMK_RGB_STATUS_BLE_PROFILE_COUNT);
++         i++) {
++        int8_t status = zmk_ble_profile_status(i);
++        uint8_t endpoint_status = ZMK_RGB_STATUS_ENDPOINT_UNUSED;
++
++        if (status == 2 && active_endpoint.transport == ZMK_TRANSPORT_BLE &&
++            active_ble_profile_index == i) {
++            endpoint_status = ZMK_RGB_STATUS_ENDPOINT_ACTIVE;
++        } else if (status == 2) {
++            endpoint_status = ZMK_RGB_STATUS_ENDPOINT_CONNECTED;
++        } else if (status == 1) {
++            endpoint_status = ZMK_RGB_STATUS_ENDPOINT_PAIRED;
++        }
++
++        payload |= (uint32_t)endpoint_status << (ZMK_RGB_STATUS_BLE_SHIFT + (i * 2));
++    }
++#endif
++
++#if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
++    enum zmk_usb_conn_state usb_state = zmk_usb_get_conn_state();
++    uint8_t endpoint_status = ZMK_RGB_STATUS_ENDPOINT_UNUSED;
++
++    if (usb_state == ZMK_USB_CONN_HID && active_endpoint.transport == ZMK_TRANSPORT_USB) {
++        endpoint_status = ZMK_RGB_STATUS_ENDPOINT_ACTIVE;
++    } else if (usb_state == ZMK_USB_CONN_HID) {
++        endpoint_status = ZMK_RGB_STATUS_ENDPOINT_CONNECTED;
++    } else if (usb_state == ZMK_USB_CONN_POWERED) {
++        endpoint_status = ZMK_RGB_STATUS_ENDPOINT_PAIRED;
++    }
++
++    payload |= (uint32_t)endpoint_status << ZMK_RGB_STATUS_USB_SHIFT;
++#endif
++
++    return payload;
++}
++
++#endif // CONFIG_ZMK_SPLIT_ROLE_CENTRAL
++
+ static int
+ on_keymap_binding_convert_central_state_dependent_params(struct zmk_behavior_binding *binding,
+                                                          struct zmk_behavior_binding_event event) {
+@@ -198,6 +288,12 @@ on_keymap_binding_convert_central_state_dependent_params(struct zmk_behavior_bin
+         binding->param2 = zmk_rgb_underglow_calc_effect(1);
+         break;
+     }
++    case RGB_STATUS_CMD: {
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
++        binding->param2 = zmk_rgb_status_payload();
++#endif
++        break;
++    }
+     default:
+         return 0;
+     }
+@@ -243,7 +339,7 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
+                                                               .s = (binding->param2 >> 8) & 0xFF,
+                                                               .b = binding->param2 & 0xFF});
+     case RGB_STATUS_CMD:
+-        return zmk_rgb_underglow_status();
++        return zmk_rgb_underglow_status(binding->param2);
+     }
+ 
+     return -ENOTSUP;
+diff --git a/app/src/rgb_underglow.c b/app/src/rgb_underglow.c
+index c4834ca..9466df6 100644
+--- a/app/src/rgb_underglow.c
++++ b/app/src/rgb_underglow.c
+@@ -78,6 +78,7 @@ static struct led_rgb pixels[STRIP_NUM_PIXELS];
+ static struct led_rgb status_pixels[STRIP_NUM_PIXELS];
+ 
+ static struct rgb_underglow_state state;
++static uint32_t status_payload;
+ 
+ #if IS_ENABLED(CONFIG_ZMK_RGB_UNDERGLOW_EXT_POWER)
+ static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_power_generic));
+@@ -324,6 +325,28 @@ static void zmk_led_fill(struct led_rgb color, const uint8_t *addresses, size_t
+     }
+ }
+ 
++static void zmk_led_battery_bars(uint8_t bars, const uint8_t *addresses, size_t addresses_len) {
++    if (bars == 0) {
++        zmk_led_fill(red, addresses, addresses_len);
++        return;
++    }
++
++    zmk_led_battery_level((MIN(bars, 6) - 1) * 20, addresses, addresses_len);
++}
++
++static struct led_rgb zmk_led_endpoint_status(uint8_t endpoint_status) {
++    switch (endpoint_status) {
++    case ZMK_RGB_STATUS_ENDPOINT_ACTIVE:
++        return white;
++    case ZMK_RGB_STATUS_ENDPOINT_CONNECTED:
++        return dull_green;
++    case ZMK_RGB_STATUS_ENDPOINT_PAIRED:
++        return red;
++    default:
++        return lilac;
++    }
++}
++
+ #define ZMK_LED_NUMLOCK_BIT BIT(0)
+ #define ZMK_LED_CAPSLOCK_BIT BIT(1)
+ #define ZMK_LED_SCROLLLOCK_BIT BIT(2)
+@@ -334,6 +357,60 @@ static int zmk_led_generate_status(void) {
+     }
+ 
+     // BATTERY STATUS
++#if !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
++    if (status_payload & ZMK_RGB_STATUS_PAYLOAD_MARKER) {
++        zmk_led_battery_bars(
++            (status_payload >> ZMK_RGB_STATUS_BATTERY_LHS_SHIFT) &
++                ZMK_RGB_STATUS_BATTERY_BARS_MASK,
++            underglow_bat_lhs, DT_PROP_LEN(UNDERGLOW_INDICATORS, bat_lhs));
++        zmk_led_battery_bars(
++            (status_payload >> ZMK_RGB_STATUS_BATTERY_RHS_SHIFT) &
++                ZMK_RGB_STATUS_BATTERY_BARS_MASK,
++            underglow_bat_rhs, DT_PROP_LEN(UNDERGLOW_INDICATORS, bat_rhs));
++
++        uint8_t layer_state =
++            (status_payload >> ZMK_RGB_STATUS_LAYER_SHIFT) & ZMK_RGB_STATUS_LAYER_MASK;
++        for (uint8_t i = 0; i < DT_PROP_LEN(UNDERGLOW_INDICATORS, layer_state); i++) {
++            if (layer_state & BIT(i)) {
++                status_pixels[underglow_layer_state[i]] = magenta;
++            }
++        }
++
++        uint8_t led_flags =
++            (status_payload >> ZMK_RGB_STATUS_LOCK_SHIFT) & ZMK_RGB_STATUS_LOCK_MASK;
++        if (led_flags & ZMK_LED_CAPSLOCK_BIT)
++            status_pixels[DT_PROP(UNDERGLOW_INDICATORS, capslock)] = red;
++        if (led_flags & ZMK_LED_NUMLOCK_BIT)
++            status_pixels[DT_PROP(UNDERGLOW_INDICATORS, numlock)] = red;
++        if (led_flags & ZMK_LED_SCROLLLOCK_BIT)
++            status_pixels[DT_PROP(UNDERGLOW_INDICATORS, scrolllock)] = red;
++
++        for (uint8_t i = 0;
++             i < MIN(DT_PROP_LEN(UNDERGLOW_INDICATORS, ble_state),
++                     ZMK_RGB_STATUS_BLE_PROFILE_COUNT);
++             i++) {
++            uint8_t endpoint_status =
++                (status_payload >> (ZMK_RGB_STATUS_BLE_SHIFT + (i * 2))) &
++                ZMK_RGB_STATUS_BLE_STATE_MASK;
++            status_pixels[underglow_ble_state[i]] = zmk_led_endpoint_status(endpoint_status);
++        }
++
++        uint8_t usb_status =
++            (status_payload >> ZMK_RGB_STATUS_USB_SHIFT) & ZMK_RGB_STATUS_USB_STATE_MASK;
++        status_pixels[DT_PROP(UNDERGLOW_INDICATORS, usb_state)] =
++            zmk_led_endpoint_status(usb_status);
++
++        if (status_payload & ZMK_RGB_STATUS_OUTPUT_FALLBACK) {
++            status_pixels[DT_PROP(UNDERGLOW_INDICATORS, output_fallback)] = red;
++        }
++    } else {
++#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)
++        zmk_led_battery_level(zmk_battery_state_of_charge(), underglow_bat_lhs,
++                              DT_PROP_LEN(UNDERGLOW_INDICATORS, bat_lhs));
++#endif
++        zmk_led_fill(red, underglow_bat_rhs, DT_PROP_LEN(UNDERGLOW_INDICATORS, bat_rhs));
++    }
++#else
+ #if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)
+     zmk_led_battery_level(zmk_battery_state_of_charge(), underglow_bat_lhs,
+                           DT_PROP_LEN(UNDERGLOW_INDICATORS, bat_lhs));
+@@ -403,6 +480,7 @@ static int zmk_led_generate_status(void) {
+     } else if (usb_state == ZMK_USB_CONN_NONE) { // disconnected
+         status_pixels[DT_PROP(UNDERGLOW_INDICATORS, usb_state)] = lilac;
+     }
++#endif // !CONFIG_ZMK_SPLIT_ROLE_CENTRAL
+ 
+     int16_t blend = 256;
+     if (state.status_animation_step < (500 / 25)) {
+@@ -659,7 +737,8 @@ static void zmk_led_write_pixels_work(struct k_work *work) {
+     }
+ }
+ 
+-int zmk_rgb_underglow_status(void) {
++int zmk_rgb_underglow_status(uint32_t payload) {
++    status_payload = payload;
+     if (!state.status_active) {
+         state.status_animation_step = 0;
+     } else {
