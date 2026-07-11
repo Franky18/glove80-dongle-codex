@@ -76,13 +76,22 @@ written.
 - `OUT_USB` in the keymap selects the dongle's USB connection.
 - The four Bluetooth profile keys control host BLE profiles stored on the
   dongle, not on the left half.
-- RGB commands are relayed to both peripherals. The left peripheral removes
-  MoErgo's central-only Magic status indicator node but retains ordinary RGB
-  effects. A dummy one-pixel RGB device on the dongle maintains central state.
+- RGB commands are relayed to both peripherals, and ordinary RGB effects remain
+  available. A dummy one-pixel RGB device on the dongle maintains central state.
 - USB Caps Lock/Num Lock/Scroll Lock indicators are forwarded to peripherals.
-- MoErgo's complete Magic status display, especially per-half battery and layer
-  presentation, may differ because the physical indicator LEDs are no longer on
-  the central device.
+- Tapping Magic asks the dongle for both peripheral battery levels and shows the
+  stock-style two battery rows on the left half for ten seconds. Row 3 is the
+  left battery (peripheral 0); row 4 is the right battery (peripheral 1). The
+  normal RGB effect resumes automatically.
+- This first Magic-status version shows battery rows only. Layer, lock, BLE, and
+  USB status pixels are intentionally omitted. Both halves must be connected
+  when Magic is tapped; a level that the dongle cannot read is shown as six red
+  LEDs.
+
+The battery-status integration is kept as a small patch in
+`patches/moergo-magic-battery-status.patch`. The root Zephyr module applies it
+only to the exact MoErgo ZMK revision pinned in `config/west.yml`; a revision or
+patch mismatch fails the build.
 
 ## Reverting to the stock topology
 
