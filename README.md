@@ -76,8 +76,9 @@ written.
 - `OUT_USB` in the keymap selects the dongle's USB connection.
 - The four Bluetooth profile keys control host BLE profiles stored on the
   dongle, not on the left half.
-- RGB commands are relayed to both peripherals. A dummy one-pixel RGB device on
-  the dongle exists only to maintain the central RGB behavior state.
+- RGB commands are relayed to both peripherals. The left peripheral removes
+  MoErgo's central-only Magic status indicator node but retains ordinary RGB
+  effects. A dummy one-pixel RGB device on the dongle maintains central state.
 - USB Caps Lock/Num Lock/Scroll Lock indicators are forwarded to peripherals.
 - MoErgo's complete Magic status display, especially per-half battery and layer
   presentation, may differ because the physical indicator LEDs are no longer on
@@ -88,4 +89,3 @@ written.
 To remove the dongle, clear settings on both Glove80 halves again, then flash a
 normal matched pair where `glove80_lh` is central and `glove80_rh` is peripheral.
 The two halves will not work as a stock pair merely by unplugging the dongle.
-
