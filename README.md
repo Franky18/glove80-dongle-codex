@@ -19,11 +19,13 @@ The configuration is for the inspected dongle only:
 
 ## Build with GitHub Actions
 
-1. Create an empty GitHub repository.
-2. Push the **contents of this directory** to the repository root. Do not push
-   the parent `glove80dongle` directory as the repository root.
-3. Open the repository's **Actions** tab.
-4. Select **Build Glove80 dongle firmware** and wait for all six matrix jobs.
+The authoritative repository is
+<https://github.com/Franky18/glove80-dongle-codex>.
+
+1. Push a focused branch to that repository and open a draft pull request.
+2. Open the repository's **Actions** tab.
+3. Select **Build Glove80 dongle firmware** and wait for all six matrix jobs.
+4. Require `Merge Output Artifacts` to pass.
 5. Download the merged artifact named `firmware`.
 
 The archive should contain exactly these six UF2 files:
@@ -94,6 +96,18 @@ The status integration is kept as a small patch in
 `patches/moergo-magic-status.patch`. The root Zephyr module applies it
 only to the exact MoErgo ZMK revision pinned in `config/west.yml`; a revision or
 patch mismatch fails the build.
+
+## Documentation
+
+- [Current project state](docs/PROJECT_STATE.md)
+- [Architecture and decisions](docs/ARCHITECTURE_AND_DECISIONS.md)
+- [Build and release](docs/BUILD_AND_RELEASE.md)
+- [Flashing and recovery](docs/FLASHING_AND_RECOVERY.md)
+- [Dongle hardware profile](docs/HARDWARE_PROFILE.md)
+
+Windows is the user's primary runtime platform, but Windows migration helpers
+and local procedures have not yet been implemented or validated. GitHub Actions
+remains the reproducible build path on every host platform.
 
 ## Reverting to the stock topology
 
