@@ -28,6 +28,36 @@ else()
     ERROR_QUIET
   )
   if(NOT patch_already_applied_result EQUAL 0)
-    message(FATAL_ERROR "Magic status patch does not match the pinned MoErgo ZMK revision")
+    # GitHub's west cache can retain source changes made by an older revision
+    # of this integration patch. Restore only the three files owned by this
+    # module, then require the current patch to match the pinned ZMK commit.
+    execute_process(
+      COMMAND git -C "${zmk_source_root}" restore --source=HEAD --
+              app/include/zmk/rgb_underglow.h
+              app/src/behaviors/behavior_rgb_underglow.c
+              app/src/rgb_underglow.c
+      RESULT_VARIABLE patch_source_restore_result
+    )
+    if(NOT patch_source_restore_result EQUAL 0)
+      message(FATAL_ERROR "Failed to restore cached ZMK RGB sources")
+    endif()
+
+    execute_process(
+      COMMAND git -C "${zmk_source_root}" apply --check "${magic_status_patch}"
+      RESULT_VARIABLE restored_patch_check_result
+      OUTPUT_QUIET
+      ERROR_QUIET
+    )
+    if(NOT restored_patch_check_result EQUAL 0)
+      message(FATAL_ERROR "Magic status patch does not match the pinned MoErgo ZMK revision")
+    endif()
+
+    execute_process(
+      COMMAND git -C "${zmk_source_root}" apply "${magic_status_patch}"
+      RESULT_VARIABLE restored_patch_apply_result
+    )
+    if(NOT restored_patch_apply_result EQUAL 0)
+      message(FATAL_ERROR "Failed to apply the Magic status patch after restoring cached sources")
+    endif()
   endif()
 endif()
