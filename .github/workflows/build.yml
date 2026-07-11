@@ -1,0 +1,15 @@
+name: Build Glove80 dongle firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Keep the reusable workflow aligned with the pinned MoErgo ZMK/Zephyr 3.5
+    # tree. The current upstream workflow assumes Zephyr hardware model v2.
+    uses: moergo-sc/zmk/.github/workflows/build-user-config.yml@2f73a230e2fc7b2bd64a9736181e87bf54338131

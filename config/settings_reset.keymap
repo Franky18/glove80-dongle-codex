@@ -1,0 +1,17 @@
+/*
+ * Ensure settings_reset builds do not accidentally select glove80.keymap from
+ * the user config directory before ZMK's built-in reset keymap.
+ */
+
+#include <behaviors.dtsi>
+
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+
+        default_layer {
+            bindings = <&sys_reset>;
+        };
+    };
+};
+

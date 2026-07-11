@@ -1,0 +1,3 @@
+/* Glove80 left/right build entry point. */
+#include "my01.keymap"
+
