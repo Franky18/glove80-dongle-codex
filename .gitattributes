@@ -1,1 +1,16 @@
-*.patch -whitespace
+* text=auto
+
+*.c text eol=lf
+*.conf text eol=lf
+*.dts text eol=lf
+*.dtsi text eol=lf
+*.h text eol=lf
+*.keymap text eol=lf
+*.md text eol=lf
+*.overlay text eol=lf
+*.patch text eol=lf -whitespace
+*.yaml text eol=lf
+*.yml text eol=lf
+
+*.uf2 binary
+*.zip binary
