@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-07-11
+Last updated: 2026-07-14
 
 ## Current status
 
@@ -12,51 +12,67 @@ Glove80 left peripheral  -- BLE --\
 Glove80 right peripheral -- BLE --/
 ```
 
-Confirmed behavior:
+Confirmed behavior on the recorded hardware profile:
 
-- Keystrokes from both halves reach the dongle.
-- The dongle presents working USB keyboard input to the computer.
-- All three devices pair and reconnect after the controlled settings-reset and
-  startup sequence.
-- ZMK Battery Center reports both peripheral battery values.
-- Ordinary RGB works on both halves.
-- A Magic tap shows stock-style left and right battery rows on the left half.
-- The complete Magic status display works: first six layers, Caps Lock, Num
-  Lock, Scroll Lock, four host BLE profiles, USB state, and output fallback.
-- The status overlay fades out after ten seconds and restores ordinary RGB.
+- keystrokes from both halves reach the dongle;
+- the dongle presents working USB keyboard input to the computer;
+- all three devices pair and reconnect after the controlled reset and startup
+  sequence;
+- ZMK Battery Center reports both peripheral battery values;
+- ordinary RGB works on both halves;
+- a Magic tap shows stock-style left and right battery rows on the left half;
+- the complete Magic status display works for layers, locks, BLE profiles, USB,
+  and output fallback;
+- the status overlay fades out and restores ordinary RGB.
 
-The user has reported the complete feature set working on hardware.
+This validation applies to the recorded hardware-validated release, not
+automatically to firmware built from an arbitrary fork or custom keymap.
 
-## Stable source and CI
+## Last hardware-validated release
 
 - Repository: <https://github.com/Franky18/glove80-dongle-codex>
-- Complete Magic pull request:
-  <https://github.com/Franky18/glove80-dongle-codex/pull/5>
 - Feature source commit: `9d42a5f24de3b4b362d9a06e4f86cdd36f79d113`
 - Main merge commit: `d444c8e1128b26575b770120b68441d5d157b194`
 - Artifact-producing Actions run:
   <https://github.com/Franky18/glove80-dongle-codex/actions/runs/29146909546>
 - Merged artifact name: `firmware`
-- The artifact contained all six expected UF2 files.
+- Immutable hashes and validation notes: `releases/9d42a5f/`
 
-The immutable hashes and validation notes are recorded in `releases/9d42a5f/`.
-The local UF2 backup is outside Git at
-`../firmware/9d42a5f-full-magic-current/` relative to this repository.
+The public-repository documentation and keymap entry-point cleanup after that
+release do not retroactively change its provenance. A later build must not be
+called hardware-validated until it has its own recorded test result.
+
+## Public fork contract
+
+The repository now exposes one normal customization point:
+
+```text
+config/glove80.keymap
+```
+
+Fork users replace that file and build through GitHub Actions. The dongle entry
+point includes the same keymap, while the six-image matrix, exact hardware
+profile, pinned MoErgo ZMK revision, and Magic integration remain
+repository-controlled.
+
+The public default is the official Layout Editor export named **Glove80 Factory
+Default Layout**. Its SHA-256 is:
+
+```text
+b5e16f21609982e8fdc9535b90ce5169252a4bbf80780a451d7172a266081e51
+```
 
 ## Source of truth
 
-- Keymap: `config/my01.keymap`
-- Keymap SHA-256:
-  `398a93120bb9413fc7a907f9779291c2729d7315a2bf77f54a5df8dfb72b183f`
+- User keymap: `config/glove80.keymap`
+- Dongle keymap wrapper: `config/glove80_dongle.keymap`
 - Build matrix: `build.yaml`
 - ZMK pin: `config/west.yml`
 - Dongle shield: `config/boards/shields/glove80_dongle/`
 - Magic integration: `patches/moergo-magic-status.patch`
 - Patch loader: `CMakeLists.txt` and `zephyr/module.yml`
 - GitHub workflow: `.github/workflows/build.yml`
-
-The old non-Git local tree is preserved under the workspace `legacy/`
-directory for reference only. It is not a source of truth.
+- Hardware compatibility gate: `docs/HARDWARE_PROFILE.md`
 
 ## Validated development history
 
@@ -68,8 +84,7 @@ directory for reference only. It is not a source of truth.
 | `1eb5d3f` | Magic two-row battery display |
 | `9d42a5f` | Complete stock-style Magic status display |
 
-All corresponding local UF2 checkpoints are preserved under the workspace
-`firmware/` directory.
+Historical release records are immutable and remain under `releases/`.
 
 ## Runtime differences from stock Glove80
 
@@ -81,28 +96,21 @@ All corresponding local UF2 checkpoints are preserved under the workspace
   dongle central.
 - Magic status is rendered physically on the left peripheral using state packed
   and sent by the dongle.
-- Both halves need to be connected when Magic is tapped for both battery rows to
-  be available; unavailable battery data is shown as six red LEDs.
+- Both halves must be connected when Magic is tapped for both battery rows to be
+  available; unavailable battery data is shown as six red LEDs.
 
-## Windows migration status
+## Windows and local build status
 
-Windows is the user's primary keyboard platform, but migration work has not yet
-started. The repository and local workspace have been reorganized in preparation:
-
-- the source directory is now a real Git clone tracking `main`;
-- firmware, downloads, hardware metadata, and legacy files are separated;
-- no symlinks or case-colliding paths are used;
-- GitHub Actions remains the reproducible build path.
-
-Do not claim Windows flashing or local build procedures are validated until they
-are exercised on the target Windows machine.
+GitHub Actions is the supported public build path on Windows, macOS, and Linux.
+It requires no local ZMK toolchain. A portable repo-relative local build helper
+is not currently included and must be tested from a clean checkout before being
+documented as a supported path.
 
 ## Open follow-up work
 
-- Clone or transfer the repository to the Windows machine and verify Git access.
-- Decide whether Windows needs only GitHub Actions downloads or a complete local
-  ZMK build toolchain.
-- Document and test PowerShell-based artifact download, hash verification, and
-  UF2 copy steps.
-- Create a durable GitHub Release for the current six validated UF2 files.
-- Measure battery-life changes quantitatively if desired.
+- run the complete six-target CI after the public-repository changes;
+- publish the current validated six-file set as durable GitHub Release assets;
+- add a repo-relative local Docker helper only after testing it from a clean
+  checkout;
+- continue collecting Windows adapter and stale host-bond reports;
+- measure battery-life changes quantitatively if desired.

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Read the flashing and recovery guide
+    url: https://github.com/Franky18/glove80-dongle-codex/blob/main/docs/FLASHING_AND_RECOVERY.md
+    about: Check the supported reset, flashing, pairing, update, and recovery procedures first.
+  - name: Check hardware compatibility
+    url: https://github.com/Franky18/glove80-dongle-codex/blob/main/docs/HARDWARE_PROFILE.md
+    about: Compare the dongle INFO_UF2.TXT before flashing.

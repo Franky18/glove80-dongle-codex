@@ -9,7 +9,76 @@ permissions:
   contents: read
 
 jobs:
+  validate:
+    name: Validate public configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Validate keymap, matrix, and revision pins
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s config/glove80.keymap
+          grep -Eq '^#include "glove80\.keymap"$' config/glove80_dongle.keymap
+
+          python3 <<'PY'
+          import re
+          from pathlib import Path
+
+          expected_artifacts = sorted(
+              [
+                  "glove80_dongle-central",
+                  "glove80_lh-peripheral",
+                  "glove80_rh-peripheral",
+                  "settings_reset-dongle",
+                  "settings_reset-glove80_lh",
+                  "settings_reset-glove80_rh",
+              ]
+          )
+
+          build = Path("build.yaml").read_text(encoding="utf-8")
+          entries = re.findall(r"^\s*-\s+board:\s+\S+\s*$", build, re.MULTILINE)
+          artifacts = re.findall(r"^\s+artifact-name:\s+(\S+)\s*$", build, re.MULTILINE)
+          if len(entries) != 6:
+              raise SystemExit("build.yaml must contain exactly six entries")
+          if len(artifacts) != len(set(artifacts)):
+              raise SystemExit("artifact names must be unique")
+          if sorted(artifacts) != expected_artifacts:
+              raise SystemExit(f"unexpected artifact names: {sorted(artifacts)!r}")
+
+          manifest = Path("config/west.yml").read_text(encoding="utf-8")
+          manifest_match = re.search(
+              r"^\s*-\s+name:\s+zmk\s*$.*?^\s+revision:\s+([0-9a-f]{40})\s*$",
+              manifest,
+              re.MULTILINE | re.DOTALL,
+          )
+          if not manifest_match:
+              raise SystemExit("config/west.yml has no pinned zmk revision")
+
+          workflow = Path(".github/workflows/build.yml").read_text(encoding="utf-8")
+          workflow_match = re.search(
+              r"uses:\s+moergo-sc/zmk/\.github/workflows/build-user-config\.yml@([0-9a-f]{40})",
+              workflow,
+          )
+          if not workflow_match:
+              raise SystemExit("could not find a pinned MoErgo reusable workflow revision")
+          if manifest_match.group(1) != workflow_match.group(1):
+              raise SystemExit("ZMK and reusable workflow revisions differ")
+          PY
+
+          if git ls-files '*.uf2' '*.zip' | grep -q .; then
+            echo "Generated UF2 files and downloaded archives must not be committed." >&2
+            exit 1
+          fi
+
+          empty_tree="$(git hash-object -t tree /dev/null)"
+          git -c core.whitespace=-blank-at-eof diff --check "$empty_tree" HEAD
+
   build:
+    needs: validate
     # Keep the reusable workflow aligned with the pinned MoErgo ZMK/Zephyr 3.5
     # tree. The current upstream workflow assumes Zephyr hardware model v2.
     uses: moergo-sc/zmk/.github/workflows/build-user-config.yml@2f73a230e2fc7b2bd64a9736181e87bf54338131

@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose an improvement to the firmware, build, or documentation
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: User need
+      description: What problem should this solve for Glove80 dongle users?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired result without assuming a particular implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Area
+      options:
+        - Documentation or onboarding
+        - Keymap compatibility
+        - Build or release workflow
+        - Connectivity or pairing
+        - Battery or status display
+        - RGB behavior
+        - Hardware support
+        - Other firmware behavior
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Hardware and compatibility impact
+      description: Note whether this affects flash layout, bootloader, bonds, split roles, ZMK revision, or supported hardware.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or related upstream features.

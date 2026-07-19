@@ -18,6 +18,25 @@ The dongle has no physical keys. Its mock scanner and 80-position transform let
 the central own the complete Glove80 keymap while receiving positions from both
 peripherals.
 
+## Public customization boundary
+
+Fork users replace only `config/glove80.keymap`. The Glove80 builds select that
+file directly, and `config/glove80_dongle.keymap` includes it for the central.
+This provides one obvious Layout Editor export target without duplicating
+keymap logic.
+
+The following remain platform inputs rather than user-layout settings:
+
+- the six-entry topology in `build.yaml`;
+- the MoErgo ZMK pin and reusable workflow pin;
+- the dongle board, shield, and flash layout;
+- the split peripheral count and controlled pairing order;
+- the Magic transport patch and payload format.
+
+Changing those inputs requires full firmware review and validation. A custom
+keymap may remove access to optional behaviors such as Magic status or RGB
+controls, but it must not redefine the physical dongle flash layout.
+
 ## Decision: pin the MoErgo revision
 
 Both `config/west.yml` and `.github/workflows/build.yml` use:
@@ -57,6 +76,11 @@ own Battery Service is disabled so the host sees only the keyboard halves.
 The pinned battery getter reports unavailable data unless all configured split
 peripherals are connected. As a result, Magic displays six red LEDs for a
 battery row it cannot read.
+
+The dongle can simultaneously be a BLE central for the halves and a BLE
+peripheral to a host. These are separate connection roles. A stale Windows host
+bond has been observed to cause repeated host reconnect activity and must be
+checked before diagnosing an apparent split radio failure.
 
 ## Decision: global RGB with a dummy dongle device
 
@@ -131,6 +155,10 @@ Treat each of these as a new engineering task:
 - altering the Magic payload layout or stock pixel mapping;
 - changing dongle board definitions, bootloader versions, or flash partitions;
 - replacing the canonical keymap in a way that changes global behavior labels.
+
+Normal fork users should replace the canonical keymap content, but changes that
+alter the expected central/peripheral feature contract still require reviewing
+Magic, RGB, host output, bootloader, and split behavior.
 
 Each can affect Kconfig dependencies, devicetree bindings, link behavior, flash
 addresses, split command compatibility, or stored bonds.
