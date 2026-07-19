@@ -17,7 +17,7 @@ Validation date: 2026-07-11
 
 ## Inputs
 
-- Canonical keymap: `config/my01.keymap`
+- Keymap: layout recorded by the SHA-256 value below
 - Keymap SHA-256:
   `398a93120bb9413fc7a907f9779291c2729d7315a2bf77f54a5df8dfb72b183f`
 - MoErgo ZMK revision:
@@ -54,6 +54,5 @@ The implementation was then merged to `main`.
 
 ## Distribution
 
-The six UF2 binaries are intentionally not committed to Git. The local backup
-is stored at workspace path `firmware/9d42a5f-full-magic-current/`. Publish them
-as GitHub Release assets if durable remote distribution is required.
+The six UF2 binaries are intentionally not committed to Git. Publish them as
+GitHub Release assets for durable distribution; Actions artifacts are temporary.

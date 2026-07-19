@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible build, flashing, connection, or runtime problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not flash another device while collecting this information. Remove private macro text before sharing a keymap or log.
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Dongle hardware profile
+      description: Paste the complete INFO_UF2.TXT from the dongle.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source commit
+      description: The full commit SHA used for the build.
+      placeholder: 40-character commit SHA
+    validations:
+      required: true
+  - type: input
+    id: actions_run
+    attributes:
+      label: GitHub Actions run
+      description: Link to the run that produced the UF2 files.
+      placeholder: https://github.com/OWNER/REPOSITORY/actions/runs/...
+    validations:
+      required: true
+  - type: textarea
+    id: firmware
+    attributes:
+      label: Firmware files flashed
+      description: List the exact filenames, devices, and whether all files came from the run above.
+    validations:
+      required: true
+  - type: textarea
+    id: host
+    attributes:
+      label: Host environment
+      description: Include operating system, USB connection, Bluetooth adapter, and whether the host has a Glove80 Dongle BLE bond.
+    validations:
+      required: true
+  - type: textarea
+    id: procedure
+    attributes:
+      label: Reset, flash, and startup procedure
+      description: Describe the order used for all three devices and whether settings-reset images were used.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and reproduction steps
+      description: Describe what happens, how often, what worked before it, and the smallest repeatable sequence.
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: What restores operation
+      description: For example, dongle reset, half reboot, host bond removal, complete settings reset, or nothing.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or additional evidence
+      description: Attach relevant logs, hashes, photos, or a minimal keymap after removing private data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I verified that the dongle matches docs/HARDWARE_PROFILE.md.
+          required: true
+        - label: I did not mix UF2 files from different workflow runs.
+          required: true
+        - label: I searched existing issues and read the flashing and recovery guide.
+          required: true

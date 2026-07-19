@@ -1,4 +1,9 @@
 .DS_Store
+/AGENTS.md
 build/
 firmware/
-
+artifacts/
+logs/
+.west/
+*.uf2
+*.zip

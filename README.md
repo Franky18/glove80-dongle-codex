@@ -1,6 +1,10 @@
-# Glove80 + Makerdiary nRF52840 MDK USB Dongle
+# Glove80 + Makerdiary nRF52840 USB Dongle
 
-This repository builds a three-part ZMK keyboard:
+[![Build Glove80 dongle firmware](https://github.com/Franky18/glove80-dongle-codex/actions/workflows/build.yml/badge.svg)](https://github.com/Franky18/glove80-dongle-codex/actions/workflows/build.yml)
+
+This repository turns a Makerdiary nRF52840 MDK USB Dongle into the wired USB
+central for a Glove80. Both keyboard halves connect to the dongle over BLE, and
+the computer sees a normal USB keyboard.
 
 ```text
 Glove80 left peripheral  -- BLE --\
@@ -8,109 +12,119 @@ Glove80 left peripheral  -- BLE --\
 Glove80 right peripheral -- BLE --/
 ```
 
-The configuration is for the inspected dongle only:
+The repository is designed to be forked. Replace one keymap file in your fork,
+let GitHub Actions build a matched six-file firmware set, and follow the
+first-installation procedure to move the split central role to the dongle.
 
-- Model: Makerdiary nRF52840 MDK USB Dongle
-- Board ID: `nRF52840-MDK-USB-DONGLE`
-- UF2 Bootloader: `0.7.1` dated 2023-07-20
-- SoftDevice: not present
-- ZMK application address: `0x1000`
-- UF2 family ID: `0xADA52840`
+## Hardware compatibility warning
 
-## Build with GitHub Actions
+The flash layout in this repository has only been validated with this exact
+device profile:
 
-The authoritative repository is
-<https://github.com/Franky18/glove80-dongle-codex>.
+| Property | Validated value |
+| --- | --- |
+| Device | Makerdiary nRF52840 MDK USB Dongle |
+| Board ID | `nRF52840-MDK-USB-DONGLE` |
+| UF2 bootloader | `0.7.1`, dated 2023-07-20 |
+| SoftDevice | not present |
+| Application address | `0x00001000` |
+| UF2 family ID | `0xADA52840` |
 
-1. Push a focused branch to that repository and open a draft pull request.
-2. Open the repository's **Actions** tab.
-3. Select **Build Glove80 dongle firmware** and wait for all six matrix jobs.
-4. Require `Merge Output Artifacts` to pass.
-5. Download the merged artifact named `firmware`.
+Do not flash a generic nRF52840 dongle, a dongle with a different flash layout,
+or a device whose `INFO_UF2.TXT` does not match the validated profile. See
+[Hardware profile](docs/HARDWARE_PROFILE.md) before building or flashing.
 
-The archive should contain exactly these six UF2 files:
+## Quick start: build with your keymap
 
-```text
-glove80_dongle-central.uf2
-glove80_lh-peripheral.uf2
-glove80_rh-peripheral.uf2
-settings_reset-dongle.uf2
-settings_reset-glove80_lh.uf2
-settings_reset-glove80_rh.uf2
-```
+1. [Fork this repository](https://github.com/Franky18/glove80-dongle-codex/fork).
+2. Open the **Actions** tab in your fork and enable workflows if GitHub asks.
+3. Export your layout from the MoErgo Glove80 Layout Editor.
+4. In your fork, replace `config/glove80.keymap` with the exported file. Keep
+   the filename exactly `glove80.keymap`.
+5. Commit the change to your fork. The build workflow runs on every push, pull
+   request, and manual dispatch.
+6. Open the completed **Build Glove80 dongle firmware** run. Require both
+   `Validate public configuration` and all six firmware builds to pass.
+7. Download the merged artifact named `firmware`.
 
-Do not flash anything if any build job failed or if one of the six files is
-missing.
+The committed `config/glove80.keymap` is the **Glove80 Factory Default Layout**
+exported by the official MoErgo Layout Editor. It gives forks a neutral,
+buildable starting point. Replace it with your own Layout Editor export when you
+want a different layout.
 
-## Keymap
+The artifact must contain exactly these files:
 
-`config/my01.keymap` is the canonical keymap exported from the MoErgo Layout
-Editor. Both `config/glove80.keymap` and `config/glove80_dongle.keymap` include
-that one file, so there is only one copy to update.
+| File | Device and purpose |
+| --- | --- |
+| `glove80_dongle-central.uf2` | Normal firmware for the Makerdiary dongle central |
+| `glove80_lh-peripheral.uf2` | Normal firmware for the Glove80 left peripheral |
+| `glove80_rh-peripheral.uf2` | Normal firmware for the Glove80 right peripheral |
+| `settings_reset-dongle.uf2` | Clears dongle settings and bonds |
+| `settings_reset-glove80_lh.uf2` | Clears left-half settings and bonds |
+| `settings_reset-glove80_rh.uf2` | Clears right-half settings and bonds |
 
-When replacing the keymap, keep the filename `config/my01.keymap` or update both
-small entry-point files.
+Do not combine files from different workflow runs. Do not flash anything if a
+job failed or one of the six files is missing.
 
-## First-time flashing overview
+Read [Custom keymaps](docs/CUSTOM_KEYMAP.md) for keymap-specific behavior and
+[Build and release](docs/BUILD_AND_RELEASE.md) for the complete build workflow.
 
-Changing the central from the Glove80 left half to the dongle requires clearing
-the old split bonds on **all three devices**.
+## First installation
 
-1. Keep a known-good stock Glove80 UF2 as a recovery image.
-2. Flash the matching `settings_reset-*.uf2` to the dongle, left half, and right
-   half. A settings-reset image is not usable as a keyboard.
-3. Flash `glove80_dongle-central.uf2` to the dongle.
-4. Flash `glove80_lh-peripheral.uf2` to the left half.
-5. Flash `glove80_rh-peripheral.uf2` to the right half.
-6. Leave the dongle connected to the computer. Power the left half on, wait for
-   it to connect, then power the right half on.
+Moving the central role from the Glove80 left half to the dongle requires
+clearing old split bonds on all three devices. Keep a known-good stock Glove80
+firmware set before starting.
 
-The Glove80 halves pair internally with the dongle. Do not look for the halves
-in the computer's Bluetooth settings. The computer receives USB HID reports
-from the dongle.
+At a high level:
 
-Detailed flashing and recovery steps should be reviewed before any UF2 is
-written.
+1. Flash the matching settings-reset image to the dongle, left half, and right
+   half. A settings-reset image is not usable keyboard firmware.
+2. Flash the three normal images from the same build.
+3. Start the dongle first, then the left half, then the right half.
 
-## Known behavior differences
+The order matters: it establishes the left half as split source 0 and the right
+half as source 1 for battery and Magic status. Review the complete
+[Flashing and recovery](docs/FLASHING_AND_RECOVERY.md) procedure before writing
+any UF2 file.
 
-- The keyboard depends on the dongle while this firmware topology is installed.
-- `OUT_USB` in the keymap selects the dongle's USB connection.
-- The four Bluetooth profile keys control host BLE profiles stored on the
-  dongle, not on the left half.
-- RGB commands are relayed to both peripherals, and ordinary RGB effects remain
-  available. A dummy one-pixel RGB device on the dongle maintains central state.
-- USB Caps Lock/Num Lock/Scroll Lock indicators are forwarded to peripherals.
-- Tapping Magic asks the dongle for both peripheral battery levels and shows the
-  stock-style two battery rows on the left half for ten seconds. Row 3 is the
-  left battery (peripheral 0); row 4 is the right battery (peripheral 1). The
-  normal RGB effect resumes automatically.
-- The same Magic display mirrors MoErgo's first six layer indicators, Caps Lock,
-  Num Lock, Scroll Lock, the first four host BLE profiles, USB state, and the
-  output-fallback warning. Those central-owned states are packed by the dongle
-  and rendered on the left peripheral with the stock pixel mappings and colors.
-- Both halves must be connected when Magic is tapped; a battery level that the
-  dongle cannot read is shown as six red LEDs.
+## Important behavior differences
 
-The status integration is kept as a small patch in
-`patches/moergo-magic-status.patch`. The root Zephyr module applies it
-only to the exact MoErgo ZMK revision pinned in `config/west.yml`; a revision or
-patch mismatch fails the build.
+- The keyboard depends on the dongle while this topology is installed.
+- The Glove80 halves pair internally with the dongle, not with the computer.
+- The keymap, layers, output selection, host profiles, and lock state run on the
+  dongle central.
+- `OUT_USB` selects the dongle's USB connection. Host BLE profile keys manage
+  profiles stored on the dongle.
+- RGB commands are relayed to both halves. The dongle uses a logical one-pixel
+  RGB device to own central RGB state; no physical LED is attached to it.
+- A standard Magic status action asks the dongle for both peripheral battery
+  levels and renders the stock-style status display on the left half. A custom
+  keymap that removes the Magic/status action will not expose that display.
+- A keymap `&bootloader` action runs on the dongle central. Use the documented
+  physical bootloader entry method when flashing either Glove80 half.
 
 ## Documentation
 
-- [Current project state](docs/PROJECT_STATE.md)
-- [Architecture and decisions](docs/ARCHITECTURE_AND_DECISIONS.md)
-- [Build and release](docs/BUILD_AND_RELEASE.md)
+- [Custom keymaps](docs/CUSTOM_KEYMAP.md)
 - [Flashing and recovery](docs/FLASHING_AND_RECOVERY.md)
-- [Dongle hardware profile](docs/HARDWARE_PROFILE.md)
+- [Hardware profile and compatibility](docs/HARDWARE_PROFILE.md)
+- [Build and release](docs/BUILD_AND_RELEASE.md)
+- [Architecture and design decisions](docs/ARCHITECTURE_AND_DECISIONS.md)
+- [Hardware-validated project state](docs/PROJECT_STATE.md)
+- [Contributing](CONTRIBUTING.md)
 
-Windows is the user's primary runtime platform, but Windows migration helpers
-and local procedures have not yet been implemented or validated. GitHub Actions
-remains the reproducible build path on every host platform.
+## Support and limitations
 
-## Reverting to the stock topology
+Before opening an issue, confirm that all firmware files came from one build,
+record the source commit and Actions run URL, and collect the dongle's
+`INFO_UF2.TXT`. The issue template asks for the hardware, host, reset, pairing,
+and Bluetooth-bond information needed to investigate safely.
 
-To remove the dongle, clear settings on both Glove80 halves again, then flash a
-normal matched pair where `glove80_lh` is central and `glove80_rh` is peripheral.
-The two halves will not work as a stock pair merely by unplugging the dongle.
+This is a community project, not an official MoErgo or Makerdiary product.
+
+## License and acknowledgements
+
+This repository is licensed under the [MIT License](LICENSE). It builds on ZMK,
+the MoErgo ZMK tree, the Glove80 Layout Editor output format, and Makerdiary's
+nRF52840 MDK USB Dongle support. Upstream copyright and SPDX notices remain in
+the files derived from those projects.
